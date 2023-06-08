@@ -1,0 +1,100 @@
+def machine_learning(gene_exp,result,deg_list):
+
+    #deg_list can only be no list, result input is one column, and gene_exp is the whole gene expression
+    import pandas as pd
+    import numpy as np
+    import scanpy as sc
+#change for the gene expression
+    df=gene_exp
+    df.columns=df.columns.str[8:12]
+    df=df[~df.index.str.contains("__")]
+
+#df reduced duplication columns, use the mean of them
+    df=df.groupby(level=0,axis=1).mean()
+
+
+    df2=result
+
+    df3=deg_list
+
+    
+    #remove df columns not in df3 index
+    inter=df3.index.intersection(df.columns)
+    df=df[inter]
+    df3=df3.loc[inter]
+
+    #ensure df column and df2 index are the same
+    df=df[df.columns.intersection(df2.index)]
+
+
+    if df.columns.equals(df2.index):
+        pass
+    else:
+        print("df columns and df2 index are not the same")
+        return  # Use 'return' to exit the function or 'sys.exit()' to exit the program
+    
+
+
+    # Construct AnnData object
+    adata = sc.AnnData(X=df.T, obs=df2, var=df3)
+    adata.obs_names_make_unique()
+    adata.var_names_make_unique()
+
+    # Check if adata.obs is binary or continuous
+    unique_labels = np.unique(adata.obs.values)
+    if len(unique_labels) == 2:  # Binary labels
+        # Binary classification machine learning model code here
+        # Example:
+        from sklearn.model_selection import train_test_split
+        from sklearn.linear_model import LogisticRegression
+
+        # Split data into training and testing sets
+        X = adata.X
+        y = adata.obs.values.ravel()
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Train logistic regression model
+        model = LogisticRegression()
+        model.fit(X_train, y_train)
+
+        # Evaluate model
+        accuracy = model.score(X_test, y_test)
+        print("Binary classification accuracy:", accuracy)
+    else:  # Continuous labels
+        # Regression machine learning model code here
+        # Example:
+        from sklearn.model_selection import train_test_split
+        from sklearn.linear_model import LinearRegression
+
+        # Split data into training and testing sets
+        X = adata.X
+        y = adata.obs.values.ravel()
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Train linear regression model
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+
+        # Evaluate model
+        r2_score = model.score(X_test, y_test)
+        print("Regression R2 score:", r2_score)
+
+
+        #find the top 10 genes
+        from sklearn.feature_selection import SelectKBest
+        from sklearn.feature_selection import f_regression
+        from sklearn.feature_selection import mutual_info_regression
+        from sklearn.feature_selection import chi2
+        from sklearn.feature_selection import f_classif
+        from sklearn.feature_selection import mutual_info_classif
+        from sklearn.feature_selection import SelectFromModel
+        from sklearn.linear_model import LassoCV
+        from sklearn.linear_model import LogisticRegressionCV
+        from sklearn.linear_model import RidgeCV
+
+        #select the top 10 genes
+        #selector = SelectKBest(f_regression, k=10)
+        #selector = SelectKBest(mutual_info_regression, k=10)
+        #selector = SelectKBest(chi2, k=10)
+
+
