@@ -1,0 +1,60 @@
+import GEOparse
+import pandas as pd
+
+def get_and_process_matrix(a):
+    gse = GEOparse.get_GEO(geo=a, destdir="./")
+    
+    # Display some GSM and GPL examples
+    print("\nGSM example:")
+    for gsm_name, gsm in list(gse.gsms.items())[:1]:
+        print("Name: ", gsm_name)
+        print("Metadata:")
+        for key, value in gsm.metadata.items():
+            print(" - %s : %s" % (key, ", ".join(value)))
+        print("Table data:")
+        print(gsm.table.head())
+    
+    print("\nGPL example:")
+    for gpl_name, gpl in list(gse.gpls.items())[:1]:
+        print("Name: ", gpl_name)
+        print("Metadata:")
+        for key, value in gpl.metadata.items():
+            print(" - %s : %s" % (key, ", ".join(value)))
+        print("Table data:")
+        print(gpl.table.head())
+    
+    # Create an empty DataFrame to store the merged matrix
+    merged_matrix = pd.DataFrame()
+
+    # Loop over all GSMs (samples)
+    for gsm_name, gsm in gse.gsms.items():
+        # Add the 'VALUE' column of the GSM's matrix to the merged matrix.
+        # The column is named after the GSM.
+        merged_matrix[gsm_name] = gsm.table['VALUE']
+
+    # Set the index of the merged matrix to the 'ID_REF' values of the first GSM's matrix.
+    # This assumes that all GSMs have the same 'ID_REF' values.
+    merged_matrix.index = gse.gsms[next(iter(gse.gsms))].table['ID_REF']
+
+    # Now, we need to replace the 'ID_REF' index values with the corresponding gene symbols
+    # Get the GPL object for the platform used in this study
+    gpl = gse.gpls[next(iter(gse.gpls))]
+
+    # Create a dictionary mapping 'ID_REF' values to gene symbols
+    id_to_gene = gpl.table[['ID', 'Gene Symbol']].set_index('ID')['Gene Symbol'].to_dict()
+
+    # Replace the index values with the gene symbols
+    merged_matrix.index = merged_matrix.index.map(id_to_gene)
+
+    # Remove duplicates in index
+    merged_matrix = merged_matrix.loc[~merged_matrix.index.duplicated(keep='first')]
+
+    # Remove empty (NaN) index
+    merged_matrix = merged_matrix[merged_matrix.index.notnull()]
+
+    return merged_matrix
+
+# Example of use
+a = input("Enter the GSE series: ")
+merged_matrix = get_and_process_matrix(a)
+print(merged_matrix)
